@@ -1,0 +1,159 @@
+const { useState, useEffect, useRef } = React;
+const Play = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+const Pause = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>;
+const RotateCcw = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>;
+export default function PomodoroTimer() 
+{
+  const [workTime, setWorkTime] = useState(25);
+  const [breakTime, setBreakTime] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(workTime * 60);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isWorkSession, setIsWorkSession] = useState(true);
+  const [completedPomodoros, setCompletedPomodoros] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const intervalRef = useRef(null);
+  const clockRef = useRef(null);
+
+  // Update live clock every second
+  useEffect(() => {
+    clockRef.current = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(clockRef.current);
+  }, []);
+
+  // Timer countdown logic
+  useEffect(() => {
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isRunning) {
+      // Session completed
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjaFz/DPfC8FKHzJ7+OZSA0RYLTn6qxZEw1Mn+PsvmMfCUGPzvHKdisDKIDP7t2UPQoXarbn6KNQEQxIouHvt2Ucdjhl2fHJdSoEKHzJ7+GYQQ8TYLPm6qxZEg1Ln+PsvmMgCT+Pz/HKdiwDKIDP7t2UPAoYarbn6KNQEQxIouLwuGccdz==');
+      audio.play().catch(() => {});
+      
+      if (isWorkSession) {
+        setCompletedPomodoros(prev => prev + 1);
+        setIsWorkSession(false);
+        setTimeLeft(breakTime * 60);
+      } else {
+        setIsWorkSession(true);
+        setTimeLeft(workTime * 60);
+      }
+    } else {
+      clearInterval(intervalRef.current);
+    }
+
+    return () => clearInterval(intervalRef.current);
+  }, [isRunning, timeLeft, isWorkSession, workTime, breakTime]);
+
+  const handleTimerPresetChange = (e) => {
+    const preset = e.target.value;
+    setIsRunning(false);
+    setIsWorkSession(true);
+    
+    if (preset === '25-5') {
+      setWorkTime(25);
+      setBreakTime(5);
+      setTimeLeft(25 * 60);
+    } else if (preset === '50-10') {
+      setWorkTime(50);
+      setBreakTime(10);
+      setTimeLeft(50 * 60);
+    } else if (preset === '105-15') {
+      setWorkTime(105);
+      setBreakTime(15);
+      setTimeLeft(105 * 60);
+    }
+  };
+
+  const toggleTimer = () => {
+    setIsRunning(!isRunning);
+  };
+
+  const resetTimer = () => {
+    setIsRunning(false);
+    setIsWorkSession(true);
+    setTimeLeft(workTime * 60);
+    setCompletedPomodoros(0);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatClock = (date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true 
+    });
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{
+      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")`,
+      backgroundColor: '#E07849'
+    }}>
+      <div className="text-center text-white p-8">
+        {/* Live Clock */}
+        <div className="text-2xl font-light mb-8 opacity-90">
+          {formatClock(currentTime)}
+        </div>
+
+        {/* Timer Preset Selector */}
+        <div className="mb-8">
+          <select 
+            onChange={handleTimerPresetChange}
+            className="bg-white bg-opacity-20 text-white text-lg px-6 py-3 rounded-2xl backdrop-blur-sm border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 cursor-pointer"
+            defaultValue="25-5"
+          >
+            <option value="25-5" className="text-gray-800">25 min work / 5 min break</option>
+            <option value="50-10" className="text-gray-800">50 min work / 10 min break</option>
+            <option value="105-15" className="text-gray-800">105 min work / 15 min break</option>
+          </select>
+        </div>
+
+        {/* Session Type */}
+        <div className="text-3xl font-light mb-4 opacity-90">
+          {isWorkSession ? 'Focus Time' : 'Break Time'}
+        </div>
+
+        {/* Timer Display */}
+        <div className="text-9xl font-bold mb-12 tracking-tight">
+          {formatTime(timeLeft)}
+        </div>
+
+        {/* Control Buttons */}
+        <div className="flex gap-6 justify-center mb-12">
+          <button
+            onClick={toggleTimer}
+            className="bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm p-6 rounded-full transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-white focus:ring-opacity-50"
+          >
+            {isRunning ? <Pause size={32} /> : <Play size={32} />}
+          </button>
+          
+          <button
+            onClick={resetTimer}
+            className="bg-white bg-opacity-20 hover:bg-opacity-30 backdrop-blur-sm p-6 rounded-full transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-white focus:ring-opacity-50"
+          >
+            <RotateCcw size={32} />
+          </button>
+        </div>
+
+        {/* Completed Pomodoros Counter */}
+        <div className="text-xl font-light opacity-90">
+          <div className="mb-2">Pomodoros Completed</div>
+          <div className="text-5xl font-bold">{completedPomodoros}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<PomodoroTimer />);
